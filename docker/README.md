@@ -18,6 +18,7 @@ Start from the top and work your way down.
 | 04 | [Dockerfile](./04_dockerfile.md) | Writing Dockerfiles, every instruction explained, layer caching, real pipeline example |
 | 05 | [Volumes and Networks](./05_volumes_and_networks.md) | Persisting data with volumes, container networking, DNS resolution between services |
 | 06 | [Docker Compose](./06_docker_compose.md) | Running multi-service stacks, full streaming pipeline example, dev patterns |
+| 07 | [Healthchecks](./07_healthchecks.md) | Container health states, healthcheck config, depends_on conditions, real examples for Kafka/Postgres/Redis |
 
 ---
 
