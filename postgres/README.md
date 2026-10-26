@@ -12,13 +12,27 @@ Postgres has first-class support for logical replication — a built-in mechanis
 
 ## Notes in Order
 
+### Priority 1 — Core (build ShopStream with these)
+
 | # | Topic | What you'll learn |
 |---|-------|-------------------|
-| 01 | [Postgres vs MySQL — Key Differences](./01_postgres_vs_mysql.md) | What's different coming from MySQL, Postgres-specific concepts you need to know |
-| 02 | [WAL and Logical Replication](./02_wal_and_replication.md) | Write-Ahead Log, logical decoding, replication slots — the engine behind CDC |
-| 03 | [CDC Concepts](./03_cdc_concepts.md) | What CDC is, how it works, patterns, and why data engineers use it |
-| 04 | [Debezium](./04_debezium.md) | What Debezium is, its architecture, connectors, and how it sits between Postgres and Kafka |
-| 05 | [Postgres + Debezium + Kafka Setup](./05_debezium_postgres_kafka.md) | Full hands-on: configuring Postgres for CDC, deploying Debezium, connecting to Kafka |
+| 01 | [Postgres vs MySQL — Key Differences](./01_postgres_vs_mysql.md) | Syntax diffs, data types (NUMERIC, TIMESTAMPTZ, JSONB, arrays), schemas, SERIAL/IDENTITY, ON CONFLICT, RETURNING, psql commands, generate_series |
+| 02 | [WAL and Logical Replication](./02_wal_and_replication.md) | WAL internals, wal_level (minimal/replica/logical), LSN, logical decoding, output plugins (pgoutput, test_decoding), replication slots, publications, REPLICA IDENTITY |
+| 03 | [CDC Concepts](./03_cdc_concepts.md) | What CDC is, polling vs log-based, event envelope, CDC patterns, snapshot modes, delivery guarantees, idempotent consumers |
+| 04 | [Debezium](./04_debezium.md) | Architecture, Kafka Connect, connector config, topic naming, SMTs, offset management, Schema Registry, monitoring via REST API |
+| 05 | [Postgres + Debezium + Kafka Setup](./05_debezium_postgres_kafka.md) | Full hands-on Docker Compose stack, init.sql, connector deployment, end-to-end verification, common errors and fixes |
+
+### Priority 2 — Production & Interviews
+
+| # | Topic | What you'll learn |
+|---|-------|-------------------|
+| 06 | [Advanced CDC Internals](./06_advanced_cdc_internals.md) | TOAST + `__debezium_unavailable_value`, heartbeat events, DDL changes, large transactions, WAL safeguards (`max_slot_wal_keep_size`), monitoring views (`pg_stat_replication`, `pg_replication_slots`), AWS RDS setup |
+
+### Priority 3 — Read and Understand
+
+| # | Topic | What you'll learn |
+|---|-------|-------------------|
+| 07 | [Internals Reference](./07_reference_and_internals.md) | Failover and logical slot loss, physical vs logical replication compared, MVCC explained, VACUUM and autovacuum, CDC interaction with dead tuples |
 
 ---
 

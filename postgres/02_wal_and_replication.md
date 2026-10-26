@@ -87,10 +87,37 @@ The output plugin formats the change events. The most important one for CDC:
 | Plugin | Format | Used by |
 |--------|--------|---------|
 | `pgoutput` | Postgres native binary | Debezium (default, built into Postgres 10+) |
+| `test_decoding` | Human-readable text | Manual debugging, testing |
 | `wal2json` | JSON | Older setups, custom consumers |
 | `decoderbufs` | Protobuf | Older Debezium versions |
 
 **Use `pgoutput`** — it's built into Postgres (no installation needed), stable, and what modern Debezium uses by default.
+
+### `test_decoding` — useful for debugging
+
+`test_decoding` is a built-in plugin that outputs changes as plain text. You can't use it with Debezium, but it's invaluable for manually inspecting the WAL to understand what's being captured:
+
+```sql
+-- create a temporary slot using test_decoding
+SELECT pg_create_logical_replication_slot('debug_slot', 'test_decoding');
+
+-- peek at changes (non-destructive)
+SELECT * FROM pg_logical_slot_peek_changes('debug_slot', NULL, NULL);
+
+-- consume changes (advances the slot position)
+SELECT * FROM pg_logical_slot_get_changes('debug_slot', NULL, NULL);
+
+-- output looks like:
+-- location  | xid | data
+-- 0/1A3F20  | 756 | BEGIN 756
+-- 0/1A3F28  | 756 | table public.orders: INSERT: id[integer]:1 amount[numeric]:99.99
+-- 0/1A3F30  | 756 | COMMIT 756
+
+-- clean up when done
+SELECT pg_drop_replication_slot('debug_slot');
+```
+
+This is useful when you want to verify that a table is actually publishing changes before setting up Debezium, or when you're debugging why Debezium isn't receiving events.
 
 ---
 
@@ -179,8 +206,11 @@ By default, Postgres is configured for physical replication or no replication. Y
 ### `postgresql.conf` settings
 
 ```ini
-# Enable logical replication (the most important setting)
-wal_level = logical           # default is 'replica', must change to 'logical'
+# The three possible wal_level values:
+#   minimal  → only what's needed for crash recovery (no replication at all)
+#   replica  → default; supports physical streaming replication and read replicas
+#   logical  → everything in replica PLUS logical decoding (required for CDC)
+wal_level = logical           # must be 'logical' for CDC — requires restart
 
 # How many replication slots can exist simultaneously
 max_replication_slots = 10    # default is 10, one slot per Debezium connector
@@ -190,6 +220,16 @@ max_wal_senders = 10          # default is 10
 
 # How long to keep WAL files (backup, not usually needed with slots)
 wal_keep_size = 0             # default, slots handle retention
+```
+
+**`wal_level` ladder — each level includes everything below it:**
+
+```
+minimal  → crash recovery only
+  ↓
+replica  → + physical replication, read replicas, pg_basebackup
+  ↓
+logical  → + logical decoding, pgoutput, Debezium CDC  ← need this
 ```
 
 **`wal_level = logical` requires a Postgres restart.** This is the only setting that needs a restart. The others can be changed with a reload.

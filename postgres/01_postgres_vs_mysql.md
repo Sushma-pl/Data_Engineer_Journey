@@ -161,6 +161,75 @@ created_at TIMESTAMPTZ DEFAULT NOW()
 
 **Always use `TIMESTAMPTZ` in Postgres.** MySQL's DATETIME is closer to Postgres's `TIMESTAMP` — both lack timezone info. For CDC pipelines spanning regions and systems, timezone-aware timestamps prevent a lot of subtle bugs.
 
+### NUMERIC — exact precision for money and measurements
+
+```sql
+-- NUMERIC(precision, scale) — exact, no floating point errors
+price    NUMERIC(10, 2)   -- up to 10 digits total, 2 after decimal
+quantity NUMERIC(6, 3)
+
+-- vs FLOAT/DOUBLE — approximate, can have rounding errors
+price    FLOAT            -- ❌ never use for money
+```
+
+**In CDC events, NUMERIC columns come through as strings, not numbers.** This is intentional — JSON numbers lose precision for large decimals. Debezium serializes `NUMERIC` as a string like `"1299.99"` to preserve exact precision.
+
+```json
+{
+  "after": {
+    "id": 1,
+    "amount": "1299.99",   ← string, not float — parse with Decimal() in Python
+    "price": "9.990"       ← trailing zeros preserved
+  }
+}
+```
+
+```python
+from decimal import Decimal
+amount = Decimal(event["after"]["amount"])  # safe, exact
+```
+
+### generate_series — generate test data
+
+`generate_series` is a Postgres function that generates a sequence of values. It's invaluable for creating test data to feed into your CDC pipeline.
+
+```sql
+-- generate a sequence of integers
+SELECT generate_series(1, 10);
+
+-- generate timestamps — one per hour for the last 24 hours
+SELECT generate_series(
+    NOW() - INTERVAL '24 hours',
+    NOW(),
+    INTERVAL '1 hour'
+) AS event_time;
+
+-- generate test orders (most useful pattern)
+INSERT INTO orders (user_id, product, amount, status)
+SELECT
+    (random() * 100 + 1)::INTEGER,                          -- random user_id 1-100
+    'Product-' || generate_series,                           -- Product-1, Product-2...
+    ROUND((random() * 500 + 10)::NUMERIC, 2),               -- random amount 10-510
+    (ARRAY['pending','shipped','delivered'])[ceil(random()*3)::INT]
+FROM generate_series(1, 1000);                               -- 1000 rows
+
+-- verify
+SELECT COUNT(*), MIN(amount), MAX(amount) FROM orders;
+```
+
+This is how you stress-test your CDC pipeline — insert thousands of rows, update them, delete them, and verify every event lands in Kafka correctly.
+
+```sql
+-- simulate updates on random rows (good for CDC testing)
+UPDATE orders
+SET status = 'shipped', updated_at = NOW()
+WHERE id IN (
+    SELECT id FROM orders
+    ORDER BY random()
+    LIMIT 100
+);
+```
+
 ---
 
 ## Schemas — A Postgres Concept MySQL Doesn't Have
